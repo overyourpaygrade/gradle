@@ -55,48 +55,7 @@ public class DefaultTaskContainerFactory implements Factory<TaskContainerInterna
     }
 
     public TaskContainerInternal create() {
-        ModelReference<DefaultTaskContainer> containerReference = ModelReference.of(TaskContainerInternal.MODEL_PATH, DEFAULT_TASK_CONTAINER_MODEL_TYPE);
-
-        ModelRegistrations.Builder registrationBuilder = BridgedCollections.registration(
-            containerReference,
-            new Transformer<DefaultTaskContainer, MutableModelNode>() {
-                @Override
-                public DefaultTaskContainer transform(MutableModelNode mutableModelNode) {
-                    return instantiator.newInstance(DefaultTaskContainer.class, mutableModelNode, project, instantiator, taskFactory, projectAccessListener);
-                }
-            },
-            new Task.Namer(),
-            "Project.<init>.tasks()",
-            new Namer()
-        );
-
-        modelRegistry.register(
-            registrationBuilder
-                .withProjection(ModelMapModelProjection.unmanaged(TASK_MODEL_TYPE, ChildNodeInitializerStrategyAccessors.of(NodeBackedModelMap.createUsingParentNode(new Transformer<NamedEntityInstantiator<Task>, MutableModelNode>() {
-                    @Override
-                    public NamedEntityInstantiator<Task> transform(MutableModelNode modelNode) {
-                        return modelNode.getPrivateData(DEFAULT_TASK_CONTAINER_MODEL_TYPE).getEntityInstantiator();
-                    }
-                }))))
-                .withProjection(UnmanagedModelProjection.of(TASK_CONTAINER_MODEL_TYPE))
-                .build()
-        );
-
-        ModelNode modelNode = modelRegistry.atStateOrLater(TaskContainerInternal.MODEL_PATH, ModelNode.State.Created);
-
-        // TODO LD use something more stable than a cast here
-        MutableModelNode mutableModelNode = (MutableModelNode) modelNode;
-
-        // Add tasks created through rules to the actual task container
-        mutableModelNode.applyTo(allLinks(), ModelActionRole.Initialize, DirectNodeNoInputsModelAction.of(TASK_MODEL_REFERENCE, COPY_TO_TASK_CONTAINER_DESCRIPTOR, new BiAction<MutableModelNode, Task>() {
-            @Override
-            public void execute(MutableModelNode modelNode, Task task) {
-                TaskContainerInternal taskContainer = modelNode.getParent().getPrivateData(TaskContainerInternal.MODEL_TYPE);
-                taskContainer.add(task);
-            }
-        }));
-
-        return mutableModelNode.getPrivateData(TaskContainerInternal.MODEL_TYPE);
+        return instantiator.newInstance(DefaultTaskContainer.class, project, instantiator, taskFactory, projectAccessListener);
     }
 
     private static class Namer implements Transformer<String, String> {

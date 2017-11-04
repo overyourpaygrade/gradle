@@ -670,11 +670,6 @@ public class DefaultProject extends AbstractPluginAware implements ProjectIntern
 
     @Override
     public ProjectInternal bindAllModelRules() {
-        try {
-            getModelRegistry().bindAllReferences();
-        } catch (Exception e) {
-            throw new ProjectConfigurationException(String.format("A problem occurred configuring %s.", this), e);
-        }
         return this;
     }
 

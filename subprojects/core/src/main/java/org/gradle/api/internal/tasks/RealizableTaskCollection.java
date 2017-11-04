@@ -31,30 +31,19 @@ public class RealizableTaskCollection<T extends Task> implements TaskCollection<
 
     private final TaskCollection<T> delegate;
     private final Class<T> type;
-    private final AtomicBoolean realized = new AtomicBoolean(false);
-    private final MutableModelNode modelNode;
 
-    public RealizableTaskCollection(Class<T> type, TaskCollection<T> delegate, MutableModelNode modelNode) {
+    public RealizableTaskCollection(Class<T> type, TaskCollection<T> delegate) {
         assert !(delegate instanceof RealizableTaskCollection) : "Attempt to wrap already realizable task collection in realizable wrapper: " + delegate;
 
         this.delegate = delegate;
         this.type = type;
-        this.modelNode = modelNode;
     }
 
     public void realizeRuleTaskTypes() {
-        // Task dependencies may be calculated more than once.
-        // This guard is purely an optimisation.
-        if (realized.compareAndSet(false, true)) {
-            modelNode.ensureAtLeast(ModelNode.State.SelfClosed);
-            for (MutableModelNode node : modelNode.getLinks(ModelType.of(type))) {
-                node.ensureAtLeast(ModelNode.State.GraphClosed);
-            }
-        }
     }
 
     private <S extends T> RealizableTaskCollection<S> realizable(Class<S> type, TaskCollection<S> collection) {
-        return new RealizableTaskCollection<S>(type, collection, modelNode);
+        return new RealizableTaskCollection<S>(type, collection);
     }
 
     @Override

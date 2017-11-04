@@ -68,18 +68,6 @@ public class HelpTasksPlugin implements Plugin<ProjectInternal> {
         tasks.addPlaceholderAction(DEPENDENT_COMPONENTS_TASK, DependentComponentsReport.class, new DependentComponentsReportAction(projectName));
     }
 
-    static class Rules extends RuleSource {
-        @Defaults
-        void addDefaultDependenciesReportConfiguration(@Path("tasks.dependencyInsight") DependencyInsightReportTask task, final ServiceRegistry services) {
-            new DslObject(task).getConventionMapping().map("configuration", new Callable<Object>() {
-                public Object call() {
-                    BuildableJavaComponent javaProject = services.get(ComponentRegistry.class).getMainComponent();
-                    return javaProject == null ? null : javaProject.getCompileDependencies();
-                }
-            });
-        }
-    }
-
     private static class HelpAction implements Action<Help> {
         @Override
         public void execute(Help task) {
