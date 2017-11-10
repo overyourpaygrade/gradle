@@ -17,6 +17,7 @@
 package org.gradle.api.internal;
 
 import com.google.common.collect.ImmutableSortedSet;
+import org.gradle.api.Action;
 import org.gradle.api.NonNullApi;
 import org.gradle.api.internal.tasks.TaskOutputFilePropertySpec;
 import org.gradle.api.internal.tasks.TaskValidationContext;
@@ -62,4 +63,6 @@ public interface TaskOutputsInternal extends TaskOutputs {
     boolean hasDeclaredOutputs();
 
     void validate(TaskValidationContext context);
+
+    void setPropertyInitializer(Action<TaskInternal> propertyInitializer);
 }

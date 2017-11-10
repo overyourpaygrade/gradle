@@ -18,8 +18,10 @@ package org.gradle.api.internal.project.taskfactory;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSortedSet;
+import org.gradle.api.Action;
 import org.gradle.api.NonNullApi;
 import org.gradle.api.internal.TaskInternal;
+import org.gradle.api.internal.tasks.TaskDestroyablesInternal;
 import org.gradle.api.internal.tasks.TaskPropertyValue;
 
 import java.util.List;
@@ -38,9 +40,24 @@ public class TaskClassValidator {
     }
 
     public void addInputsAndOutputs(final TaskInternal task) {
-        for (TaskPropertyInfo property : annotatedProperties) {
-            property.getConfigureAction().update(task, new TaskPropertyValue(property, task));
-        }
+        Action<TaskInternal> action = new Action<TaskInternal>() {
+
+            private boolean called;
+
+            @Override
+            public void execute(TaskInternal taskInternal) {
+                if (called) {
+                    return;
+                }
+                called = true;
+                for (TaskPropertyInfo property : annotatedProperties) {
+                    property.getConfigureAction().update(task, new TaskPropertyValue(property, task));
+                }
+            }
+        };
+        task.getInputs().setPropertyInitializer(action);
+        task.getOutputs().setPropertyInitializer(action);
+        ((TaskDestroyablesInternal) task.getDestroyables()).setPropertyInitializer(action);
     }
 
     public boolean hasAnythingToValidate() {

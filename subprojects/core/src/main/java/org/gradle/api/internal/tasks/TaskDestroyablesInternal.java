@@ -16,7 +16,9 @@
 
 package org.gradle.api.internal.tasks;
 
+import org.gradle.api.Action;
 import org.gradle.api.file.FileCollection;
+import org.gradle.api.internal.TaskInternal;
 import org.gradle.api.tasks.TaskDestroyables;
 
 /**
@@ -24,4 +26,5 @@ import org.gradle.api.tasks.TaskDestroyables;
  */
 public interface TaskDestroyablesInternal extends TaskDestroyables {
     FileCollection getFiles();
+    void setPropertyInitializer(Action<TaskInternal> propertyInitializer);
 }

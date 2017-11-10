@@ -17,11 +17,13 @@
 package org.gradle.api.internal.tasks;
 
 import com.google.common.collect.Lists;
+import org.gradle.api.Action;
 import org.gradle.api.NonNullApi;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.internal.TaskInternal;
 import org.gradle.api.internal.file.FileResolver;
 import org.gradle.api.internal.file.collections.DefaultConfigurableFileCollection;
+import org.gradle.internal.Actions;
 import org.gradle.util.DeprecationLogger;
 
 import java.util.Collections;
@@ -33,6 +35,7 @@ public class DefaultTaskDestroyables implements TaskDestroyablesInternal {
     private final TaskInternal task;
     private final TaskMutator taskMutator;
     private final List<Object> paths = Lists.newArrayList();
+    private Action<TaskInternal> propertyInitializer = Actions.doNothing();
 
     public DefaultTaskDestroyables(FileResolver resolver, TaskInternal task, TaskMutator taskMutator) {
         this.resolver = resolver;
@@ -40,8 +43,13 @@ public class DefaultTaskDestroyables implements TaskDestroyablesInternal {
         this.taskMutator = taskMutator;
     }
 
+    public void setPropertyInitializer(Action<TaskInternal> propertyInitializer) {
+        this.propertyInitializer = propertyInitializer;
+    }
+
     @Override
     public void files(final Object... paths) {
+        propertyInitializer.execute(task);
         DeprecationLogger.nagUserOfReplacedMethod("TaskDestroys.files", "TaskDestroys.register");
         taskMutator.mutate("TaskDestroys.files(Object...)", new Runnable() {
             @Override
@@ -53,6 +61,7 @@ public class DefaultTaskDestroyables implements TaskDestroyablesInternal {
 
     @Override
     public void file(final Object path) {
+        propertyInitializer.execute(task);
         DeprecationLogger.nagUserOfReplacedMethod("TaskDestroys.file", "TaskDestroys.register");
         taskMutator.mutate("TaskDestroys.file(Object...)", new Runnable() {
             @Override
@@ -64,6 +73,7 @@ public class DefaultTaskDestroyables implements TaskDestroyablesInternal {
 
     @Override
     public void register(final Object... paths) {
+        propertyInitializer.execute(task);
         taskMutator.mutate("TaskDestroys.register(Object...)", new Runnable() {
             @Override
             public void run() {
@@ -74,6 +84,7 @@ public class DefaultTaskDestroyables implements TaskDestroyablesInternal {
 
     @Override
     public FileCollection getFiles() {
+        propertyInitializer.execute(task);
         return new DefaultConfigurableFileCollection(task + " destroy files", resolver, null, paths);
     }
 }

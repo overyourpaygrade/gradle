@@ -18,6 +18,7 @@ package org.gradle.api.internal.tasks;
 import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Lists;
 import groovy.lang.GString;
+import org.gradle.api.Action;
 import org.gradle.api.Describable;
 import org.gradle.api.InvalidUserDataException;
 import org.gradle.api.NonNullApi;
@@ -31,6 +32,7 @@ import org.gradle.api.internal.file.FileTreeInternal;
 import org.gradle.api.internal.file.collections.FileCollectionResolveContext;
 import org.gradle.api.tasks.TaskInputPropertyBuilder;
 import org.gradle.api.tasks.TaskInputs;
+import org.gradle.internal.Actions;
 import org.gradle.internal.typeconversion.UnsupportedNotationException;
 import org.gradle.util.DeprecationLogger;
 
@@ -55,6 +57,7 @@ public class DefaultTaskInputs implements TaskInputsInternal {
     private final List<DeclaredTaskInputFileProperty> declaredFileProperties = Lists.newArrayList();
     private final TaskInputs deprecatedThis;
     private ImmutableSortedSet<TaskInputFilePropertySpec> fileProperties;
+    private Action<TaskInternal> propertyInitializer = Actions.doNothing();
 
     public DefaultTaskInputs(FileResolver resolver, TaskInternal task, TaskMutator taskMutator) {
         this.resolver = resolver;
@@ -66,8 +69,13 @@ public class DefaultTaskInputs implements TaskInputsInternal {
         this.deprecatedThis = new LenientTaskInputsDeprecationSupport(this);
     }
 
+    public void setPropertyInitializer(Action<TaskInternal> propertyInitializer) {
+        this.propertyInitializer = propertyInitializer;
+    }
+
     @Override
     public boolean getHasInputs() {
+        propertyInitializer.execute(task);
         return !declaredFileProperties.isEmpty() || !properties.isEmpty();
     }
 
@@ -78,6 +86,7 @@ public class DefaultTaskInputs implements TaskInputsInternal {
 
     @Override
     public ImmutableSortedSet<TaskInputFilePropertySpec> getFileProperties() {
+        propertyInitializer.execute(task);
         if (fileProperties == null) {
             ensurePropertiesHaveNames(declaredFileProperties);
             fileProperties = TaskPropertyUtils.<TaskInputFilePropertySpec>collectFileProperties("input", declaredFileProperties.iterator());
@@ -148,6 +157,7 @@ public class DefaultTaskInputs implements TaskInputsInternal {
 
     @Override
     public boolean getHasSourceFiles() {
+        propertyInitializer.execute(task);
         for (DeclaredTaskInputFileProperty propertySpec : declaredFileProperties) {
             if (propertySpec.isSkipWhenEmpty()) {
                 return true;
@@ -163,6 +173,7 @@ public class DefaultTaskInputs implements TaskInputsInternal {
 
     @Override
     public void validate(TaskValidationContext context) {
+        propertyInitializer.execute(task);
         TaskPropertyUtils.ensurePropertiesHaveNames(declaredFileProperties);
         for (PropertyValue propertyValue : properties.values()) {
             propertyValue.getPropertySpec().validate(context);
@@ -173,12 +184,14 @@ public class DefaultTaskInputs implements TaskInputsInternal {
     }
 
     private TaskInputFilePropertyBuilderInternal addSpec(ValidatingValue paths, ValidationAction validationAction) {
+        propertyInitializer.execute(task);
         DefaultTaskInputFilePropertySpec spec = new DefaultTaskInputFilePropertySpec(task.getName(), resolver, paths, validationAction);
         declaredFileProperties.add(spec);
         return spec;
     }
 
     public Map<String, Object> getProperties() {
+        propertyInitializer.execute(task);
         Map<String, Object> actualProperties = new HashMap<String, Object>();
         for (PropertyValue property : properties.values()) {
             String propertyName = property.resolveName();
@@ -237,6 +250,7 @@ public class DefaultTaskInputs implements TaskInputsInternal {
 
     @Override
     public TaskInputPropertyBuilder registerProperty(String name, ValidatingValue value) {
+        propertyInitializer.execute(task);
         PropertyValue propertyValue = properties.get(name);
         DeclaredTaskInputProperty spec;
         if (propertyValue instanceof SimplePropertyValue) {
@@ -252,6 +266,7 @@ public class DefaultTaskInputs implements TaskInputsInternal {
 
     @Override
     public TaskInputPropertyBuilder registerNested(String name, ValidatingValue value) {
+        propertyInitializer.execute(task);
         PropertyValue propertyValue = properties.get(name);
         DeclaredTaskInputProperty spec;
         if (propertyValue instanceof NestedBeanTypePropertyValue) {
@@ -321,7 +336,7 @@ public class DefaultTaskInputs implements TaskInputsInternal {
         }
     }
 
-    private static class TaskInputUnionFileCollection extends CompositeFileCollection implements Describable {
+    private class TaskInputUnionFileCollection extends CompositeFileCollection implements Describable {
         private final boolean skipWhenEmptyOnly;
         private final String taskName;
         private final String type;
@@ -341,6 +356,7 @@ public class DefaultTaskInputs implements TaskInputsInternal {
 
         @Override
         public void visitContents(FileCollectionResolveContext context) {
+            propertyInitializer.execute(task);
             for (DeclaredTaskInputFileProperty fileProperty : filePropertiesInternal) {
                 if (!skipWhenEmptyOnly || fileProperty.isSkipWhenEmpty()) {
                     context.add(fileProperty.getPropertyFiles());

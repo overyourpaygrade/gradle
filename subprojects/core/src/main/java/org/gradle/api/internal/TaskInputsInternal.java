@@ -17,6 +17,7 @@
 package org.gradle.api.internal;
 
 import com.google.common.collect.ImmutableSortedSet;
+import org.gradle.api.Action;
 import org.gradle.api.internal.tasks.TaskInputFilePropertyBuilderInternal;
 import org.gradle.api.internal.tasks.TaskInputFilePropertySpec;
 import org.gradle.api.internal.tasks.TaskValidationContext;
@@ -38,4 +39,6 @@ public interface TaskInputsInternal extends TaskInputs {
     TaskInputPropertyBuilder registerNested(String name, ValidatingValue value);
 
     void validate(TaskValidationContext context);
+
+    void setPropertyInitializer(Action<TaskInternal> propertyInitializer);
 }

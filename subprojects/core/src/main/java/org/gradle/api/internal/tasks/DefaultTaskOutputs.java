@@ -22,6 +22,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
 import groovy.lang.Closure;
+import org.gradle.api.Action;
 import org.gradle.api.Describable;
 import org.gradle.api.NonNullApi;
 import org.gradle.api.Task;
@@ -38,6 +39,7 @@ import org.gradle.api.internal.tasks.execution.SelfDescribingSpec;
 import org.gradle.api.specs.AndSpec;
 import org.gradle.api.specs.Spec;
 import org.gradle.api.tasks.TaskOutputFilePropertyBuilder;
+import org.gradle.internal.Actions;
 
 import javax.annotation.Nullable;
 import java.io.File;
@@ -67,12 +69,17 @@ public class DefaultTaskOutputs implements TaskOutputsInternal {
     private final FileResolver resolver;
     private final TaskInternal task;
     private final TaskMutator taskMutator;
+    private Action<TaskInternal> propertyInitializer = Actions.doNothing();
 
     public DefaultTaskOutputs(FileResolver resolver, final TaskInternal task, TaskMutator taskMutator) {
         this.resolver = resolver;
         this.task = task;
         this.taskMutator = taskMutator;
         this.allOutputFiles = new TaskOutputUnionFileCollection(task);
+    }
+
+    public void setPropertyInitializer(Action<TaskInternal> propertyInitializer) {
+        this.propertyInitializer = propertyInitializer;
     }
 
     @Override
@@ -182,6 +189,7 @@ public class DefaultTaskOutputs implements TaskOutputsInternal {
 
     @Override
     public boolean hasDeclaredOutputs() {
+        propertyInitializer.execute(task);
         return !declaredFileProperties.isEmpty();
     }
 
@@ -192,6 +200,7 @@ public class DefaultTaskOutputs implements TaskOutputsInternal {
 
     @Override
     public ImmutableSortedSet<TaskOutputFilePropertySpec> getFileProperties() {
+        propertyInitializer.execute(task);
         if (fileProperties == null) {
             TaskPropertyUtils.ensurePropertiesHaveNames(declaredFileProperties);
             Iterator<TaskOutputFilePropertySpec> flattenedProperties = Iterators.concat(Iterables.transform(declaredFileProperties, new Function<TaskPropertySpec, Iterator<? extends TaskOutputFilePropertySpec>>() {
@@ -281,6 +290,7 @@ public class DefaultTaskOutputs implements TaskOutputsInternal {
     }
 
     private TaskOutputFilePropertyBuilder addSpec(DeclaredTaskOutputFileProperty spec) {
+        propertyInitializer.execute(task);
         declaredFileProperties.add(spec);
         return spec;
     }
@@ -300,6 +310,7 @@ public class DefaultTaskOutputs implements TaskOutputsInternal {
 
     @Override
     public void validate(TaskValidationContext context) {
+        propertyInitializer.execute(task);
         TaskPropertyUtils.ensurePropertiesHaveNames(declaredFileProperties);
         for (DeclaredTaskOutputFileProperty property : declaredFileProperties) {
             property.validate(context);
@@ -320,6 +331,7 @@ public class DefaultTaskOutputs implements TaskOutputsInternal {
 
         @Override
         public void visitContents(FileCollectionResolveContext context) {
+            propertyInitializer.execute(task);
             for (TaskFilePropertySpec propertySpec : getFileProperties()) {
                 context.add(propertySpec.getPropertyFiles());
             }
@@ -327,6 +339,7 @@ public class DefaultTaskOutputs implements TaskOutputsInternal {
 
         @Override
         public void visitDependencies(TaskDependencyResolveContext context) {
+            propertyInitializer.execute(task);
             context.add(buildDependencies);
             super.visitDependencies(context);
         }
