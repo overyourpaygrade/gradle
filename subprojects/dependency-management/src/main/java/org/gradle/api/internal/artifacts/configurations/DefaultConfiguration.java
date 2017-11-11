@@ -137,7 +137,6 @@ public class DefaultConfiguration extends AbstractFileCollection implements Conf
     private ResolutionStrategyInternal resolutionStrategy;
     private final FileCollectionFactory fileCollectionFactory;
 
-    private final Set<MutationValidator> childMutationValidators = Sets.newHashSet();
     private final MutationValidator parentMutationValidator = new MutationValidator() {
         @Override
         public void validateMutation(MutationType type) {
@@ -303,7 +302,7 @@ public class DefaultConfiguration extends AbstractFileCollection implements Conf
     public Configuration extendsFrom(Configuration... extendsFrom) {
         validateMutation(MutationType.DEPENDENCIES);
         for (Configuration configuration : extendsFrom) {
-            if (configuration.getHierarchy().contains(this)) {
+            if (((DefaultConfiguration) configuration).doesExtend(this)) {
                 throw new InvalidUserDataException(String.format(
                     "Cyclic extendsFrom from %s and %s is not allowed. See existing hierarchy: %s", this,
                     configuration, configuration.getHierarchy()));
@@ -315,6 +314,18 @@ public class DefaultConfiguration extends AbstractFileCollection implements Conf
             }
         }
         return this;
+    }
+
+    private boolean doesExtend(Configuration other) {
+        if (extendsFrom.contains(other)) {
+            return true;
+        }
+        for (Configuration extendedConfig : extendsFrom) {
+            if (((DefaultConfiguration) extendedConfig).doesExtend(other)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public boolean isTransitive() {
@@ -734,12 +745,10 @@ public class DefaultConfiguration extends AbstractFileCollection implements Conf
 
     @Override
     public void addMutationValidator(MutationValidator validator) {
-        childMutationValidators.add(validator);
     }
 
     @Override
     public void removeMutationValidator(MutationValidator validator) {
-        childMutationValidators.remove(validator);
     }
 
     private void validateParentMutation(MutationType type) {
@@ -810,10 +819,6 @@ public class DefaultConfiguration extends AbstractFileCollection implements Conf
     }
 
     private void notifyChildren(MutationType type) {
-        // Notify child configurations
-        for (MutationValidator validator : childMutationValidators) {
-            validator.validateMutation(type);
-        }
     }
 
     private static class ConfigurationDescription implements Describable {

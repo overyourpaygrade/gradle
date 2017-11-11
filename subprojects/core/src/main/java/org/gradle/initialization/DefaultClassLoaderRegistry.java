@@ -49,6 +49,7 @@ public class DefaultClassLoaderRegistry implements ClassLoaderRegistry {
         for (String packageName : apiAggregate.getExportedPackages()) {
             apiSpec.allowPackage(packageName);
         }
+        apiSpec.allowPackage("com.android.builder.profile");
         return apiSpec;
     }
 

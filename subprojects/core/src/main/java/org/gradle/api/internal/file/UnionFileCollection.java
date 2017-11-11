@@ -16,20 +16,16 @@
 package org.gradle.api.internal.file;
 
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Sets;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.internal.file.collections.FileCollectionResolveContext;
-import org.gradle.util.GUtil;
 
-import java.util.Arrays;
-import java.util.LinkedHashSet;
 import java.util.Set;
 
 public class UnionFileCollection extends CompositeFileCollection {
     private ImmutableSet<FileCollection> source;
 
     public UnionFileCollection(FileCollection... source) {
-        this(Arrays.asList(source));
+        this(ImmutableSet.copyOf(source));
     }
 
     public UnionFileCollection(Iterable<? extends FileCollection> source) {

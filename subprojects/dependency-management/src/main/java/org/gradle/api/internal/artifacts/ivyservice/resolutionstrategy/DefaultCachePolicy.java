@@ -50,9 +50,9 @@ public class DefaultCachePolicy implements CachePolicy, ResolutionRules {
 
     public DefaultCachePolicy(ImmutableModuleIdentifierFactory moduleIdentifierFactory) {
         this.moduleIdentifierFactory = moduleIdentifierFactory;
-        this.dependencyCacheRules = new ArrayList<Action<? super DependencyResolutionControl>>();
-        this.moduleCacheRules = new ArrayList<Action<? super ModuleResolutionControl>>();
-        this.artifactCacheRules = new ArrayList<Action<? super ArtifactResolutionControl>>();
+        this.dependencyCacheRules = new ArrayList<Action<? super DependencyResolutionControl>>(2);
+        this.moduleCacheRules = new ArrayList<Action<? super ModuleResolutionControl>>(2);
+        this.artifactCacheRules = new ArrayList<Action<? super ArtifactResolutionControl>>(2);
 
         cacheDynamicVersionsFor(SECONDS_IN_DAY, TimeUnit.SECONDS);
         cacheChangingModulesFor(SECONDS_IN_DAY, TimeUnit.SECONDS);

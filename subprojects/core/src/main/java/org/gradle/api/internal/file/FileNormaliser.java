@@ -69,23 +69,7 @@ class FileNormaliser {
                 candidate = file;
             }
 
-            // If the file system is case sensitive, we don't have to normalise it further
-            if (fileSystem.isCaseSensitive()) {
-                return candidate;
-            }
-
-            // Short-circuit the slower lookup method by using the canonical file
-            File canonical = candidate.getCanonicalFile();
-            if (candidate.getPath().equalsIgnoreCase(canonical.getPath())) {
-                return canonical;
-            }
-
-            // Canonical path is different to what we expected (eg there is a link somewhere in there). Normalise a segment at a time
-            // TODO - start resolving only from where the expected and canonical paths are different
-            if (path == null) {
-                path = splitAndNormalisePath(filePath);
-            }
-            return normaliseUnixPathIgnoringCase(path);
+            return candidate;
         } catch (IOException e) {
             throw new UncheckedIOException(String.format("Could not normalize path for file '%s'.", file), e);
         }

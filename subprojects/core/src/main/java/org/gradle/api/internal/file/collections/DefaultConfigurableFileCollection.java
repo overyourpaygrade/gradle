@@ -16,6 +16,8 @@
 
 package org.gradle.api.internal.file.collections;
 
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.internal.file.CompositeFileCollection;
 import org.gradle.api.internal.tasks.DefaultTaskDependency;
@@ -32,10 +34,11 @@ import java.util.Set;
  * A {@link org.gradle.api.file.FileCollection} which resolves a set of paths relative to a {@link org.gradle.api.internal.file.FileResolver}.
  */
 public class DefaultConfigurableFileCollection extends CompositeFileCollection implements ConfigurableFileCollection {
-    private final Set<Object> files;
     private final String displayName;
     private final PathToFileResolver resolver;
     private final DefaultTaskDependency buildDependency;
+
+    private ImmutableSet<Object> files;
 
     public DefaultConfigurableFileCollection(PathToFileResolver fileResolver, TaskResolver taskResolver, Object... files) {
         this("file collection", fileResolver, taskResolver, files);
@@ -44,7 +47,7 @@ public class DefaultConfigurableFileCollection extends CompositeFileCollection i
     public DefaultConfigurableFileCollection(String displayName, PathToFileResolver fileResolver, TaskResolver taskResolver, Object... files) {
         this.displayName = displayName;
         this.resolver = fileResolver;
-        this.files = new LinkedHashSet<Object>(Arrays.asList(files));
+        this.files = ImmutableSet.copyOf(files);
         buildDependency = new DefaultTaskDependency(taskResolver);
     }
 
@@ -57,17 +60,15 @@ public class DefaultConfigurableFileCollection extends CompositeFileCollection i
     }
 
     public void setFrom(Iterable<?> path) {
-        files.clear();
-        files.add(path);
+        files = ImmutableSet.copyOf(path);
     }
 
     public void setFrom(Object... paths) {
-        files.clear();
-        GUtil.addToCollection(files, Arrays.asList(paths));
+        files = ImmutableSet.copyOf(paths);
     }
 
     public ConfigurableFileCollection from(Object... paths) {
-        GUtil.addToCollection(files, Arrays.asList(paths));
+        files = Sets.union(files, ImmutableSet.copyOf(paths)).immutableCopy();
         return this;
     }
 

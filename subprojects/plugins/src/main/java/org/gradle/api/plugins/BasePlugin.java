@@ -159,16 +159,6 @@ public class BasePlugin implements Plugin<Project> {
         final DefaultArtifactPublicationSet defaultArtifacts = project.getExtensions().create(
                 "defaultArtifacts", DefaultArtifactPublicationSet.class, archivesConfiguration.getArtifacts()
         );
-
-        configurations.all(new Action<Configuration>() {
-            public void execute(Configuration configuration) {
-                configuration.getArtifacts().all(new Action<PublishArtifact>() {
-                    public void execute(PublishArtifact artifact) {
-                        defaultArtifacts.addCandidate(artifact);
-                    }
-                });
-            }
-        });
     }
 
     private void configureAssemble(final ProjectInternal project) {

@@ -16,6 +16,7 @@
 
 package org.gradle.api.internal.plugins;
 
+import org.gradle.api.Action;
 import org.gradle.api.Plugin;
 import org.gradle.api.initialization.dsl.ScriptHandler;
 import org.gradle.api.internal.file.FileResolver;
@@ -27,6 +28,7 @@ import org.gradle.configuration.ScriptPlugin;
 import org.gradle.configuration.ScriptPluginFactory;
 import org.gradle.groovy.scripts.ScriptSource;
 import org.gradle.groovy.scripts.TextResourceScriptSource;
+import org.gradle.internal.MutableActionSet;
 import org.gradle.internal.resource.TextResource;
 import org.gradle.internal.resource.TextResourceLoader;
 import org.gradle.util.GUtil;
@@ -41,7 +43,7 @@ public class DefaultObjectConfigurationAction implements ObjectConfigurationActi
     private final ScriptPluginFactory configurerFactory;
     private final ScriptHandlerFactory scriptHandlerFactory;
     private final Set<Object> targets = new LinkedHashSet<Object>();
-    private final Set<Runnable> actions = new LinkedHashSet<Runnable>();
+    private final MutableActionSet<DefaultObjectConfigurationAction> actions = new MutableActionSet<DefaultObjectConfigurationAction>();
     private final ClassLoaderScope classLoaderScope;
     private final TextResourceLoader resourceLoader;
     private final Object defaultTarget;
@@ -63,38 +65,22 @@ public class DefaultObjectConfigurationAction implements ObjectConfigurationActi
     }
 
     public ObjectConfigurationAction from(final Object script) {
-        actions.add(new Runnable() {
-            public void run() {
-                applyScript(script);
-            }
-        });
+        actions.add(new ApplyScriptAction(script));
         return this;
     }
 
     public ObjectConfigurationAction plugin(final Class<? extends Plugin> pluginClass) {
-        actions.add(new Runnable() {
-            public void run() {
-                applyPlugin(pluginClass);
-            }
-        });
+        actions.add(new ApplyPluginByClassAction(pluginClass));
         return this;
     }
 
     public ObjectConfigurationAction plugin(final String pluginId) {
-        actions.add(new Runnable() {
-            public void run() {
-                applyType(pluginId);
-            }
-        });
+        actions.add(new ApplyPluginByIdAction(pluginId));
         return this;
     }
 
     public ObjectConfigurationAction type(final Class<?> pluginClass) {
-        actions.add(new Runnable() {
-            public void run() {
-                applyType(pluginClass);
-            }
-        });
+        actions.add(new ApplyTypeByClassAction(pluginClass));
         return this;
     }
 
@@ -139,8 +125,54 @@ public class DefaultObjectConfigurationAction implements ObjectConfigurationActi
             to(defaultTarget);
         }
 
-        for (Runnable action : actions) {
-            action.run();
+        actions.execute(this);
+    }
+
+    private static class ApplyTypeByClassAction implements Action<DefaultObjectConfigurationAction> {
+        private final Class<?> pluginClass;
+
+        public ApplyTypeByClassAction(Class<?> pluginClass) {
+            this.pluginClass = pluginClass;
+        }
+
+        public void execute(DefaultObjectConfigurationAction me) {
+            me.applyType(pluginClass);
+        }
+    }
+
+    private static class ApplyPluginByIdAction implements Action<DefaultObjectConfigurationAction> {
+        private final String pluginId;
+
+        public ApplyPluginByIdAction(String pluginId) {
+            this.pluginId = pluginId;
+        }
+
+        public void execute(DefaultObjectConfigurationAction me) {
+            me.applyType(pluginId);
+        }
+    }
+
+    private static class ApplyPluginByClassAction implements Action<DefaultObjectConfigurationAction> {
+        private final Class<? extends Plugin> pluginClass;
+
+        public ApplyPluginByClassAction(Class<? extends Plugin> pluginClass) {
+            this.pluginClass = pluginClass;
+        }
+
+        public void execute(DefaultObjectConfigurationAction me) {
+            me.applyPlugin(pluginClass);
+        }
+    }
+
+    private static class ApplyScriptAction implements Action<DefaultObjectConfigurationAction> {
+        private final Object script;
+
+        public ApplyScriptAction(Object script) {
+            this.script = script;
+        }
+
+        public void execute(DefaultObjectConfigurationAction me) {
+            me.applyScript(script);
         }
     }
 }

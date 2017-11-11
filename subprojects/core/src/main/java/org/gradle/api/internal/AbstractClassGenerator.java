@@ -42,7 +42,6 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -65,9 +64,9 @@ import java.util.concurrent.locks.ReentrantLock;
  * </ul>
  */
 public abstract class AbstractClassGenerator implements ClassGenerator {
-    private static final Map<Class<?>, Map<Class<?>, Class<?>>> GENERATED_CLASSES = new HashMap<Class<?>, Map<Class<?>, Class<?>>>();
-    private static final Lock CACHE_LOCK = new ReentrantLock();
     private static final Collection<String> SKIP_PROPERTIES = Arrays.asList("class", "metaClass", "conventionMapping", "convention", "asDynamicObject", "extensions");
+    private static final Lock LOCK = new ReentrantLock();
+    private static Map<Class<?>, Class<?>> CACHE;
 
     public <T> T newInstance(Class<T> type, Object... parameters) {
         return DirectInstantiator.instantiate(generate(type), parameters);
@@ -75,23 +74,21 @@ public abstract class AbstractClassGenerator implements ClassGenerator {
 
     public <T> Class<? extends T> generate(Class<T> type) {
         try {
-            CACHE_LOCK.lock();
+            LOCK.lock();
             return generateUnderLock(type);
         } finally {
-            CACHE_LOCK.unlock();
+            LOCK.unlock();
         }
     }
 
     private <T> Class<? extends T> generateUnderLock(Class<T> type) {
-        Map<Class<?>, Class<?>> cache = GENERATED_CLASSES.get(getClass());
-        if (cache == null) {
+        if (CACHE == null) {
             // WeakHashMap won't work here. It keeps a strong reference to the mapping value, which is the generated class in this case
             // However, the generated class has a strong reference to the source class (by extending it), so the keys will always be
             // strongly reachable while this Class is strongly reachable. Use weak references for both key and value of the mapping instead.
-            cache = new ReferenceMap(AbstractReferenceMap.WEAK, AbstractReferenceMap.WEAK);
-            GENERATED_CLASSES.put(getClass(), cache);
+            CACHE = new ReferenceMap(AbstractReferenceMap.WEAK, AbstractReferenceMap.WEAK);
         }
-        Class<?> generatedClass = cache.get(type);
+        Class<?> generatedClass = CACHE.get(type);
         if (generatedClass != null) {
             return generatedClass.asSubclass(type);
         }
@@ -223,8 +220,8 @@ public abstract class AbstractClassGenerator implements ClassGenerator {
             throw new GradleException(String.format("Could not generate a proxy class for class %s.", type.getName()), e);
         }
 
-        cache.put(type, subclass);
-        cache.put(subclass, subclass);
+        CACHE.put(type, subclass);
+        CACHE.put(subclass, subclass);
         return subclass;
     }
 

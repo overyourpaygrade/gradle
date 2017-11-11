@@ -16,22 +16,33 @@
 
 package org.gradle.api.internal.artifacts;
 
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
+import groovy.lang.MissingPropertyException;
 import org.gradle.api.InvalidUserDataException;
 import org.gradle.api.artifacts.ExcludeRule;
-import org.gradle.api.tasks.Optional;
 import org.gradle.internal.exceptions.DiagnosticsVisitor;
-import org.gradle.internal.typeconversion.MapKey;
-import org.gradle.internal.typeconversion.MapNotationConverter;
 import org.gradle.internal.typeconversion.NotationParser;
 import org.gradle.internal.typeconversion.NotationParserBuilder;
+import org.gradle.internal.typeconversion.TypeInfo;
+import org.gradle.internal.typeconversion.TypedNotationConverter;
 
-public class ExcludeRuleNotationConverter extends MapNotationConverter<ExcludeRule> {
+import java.util.Map;
+import java.util.Set;
+
+public class ExcludeRuleNotationConverter extends TypedNotationConverter<Map<String, String>, ExcludeRule> {
+
+    private static final ImmutableSet<String> ALLOWED_PROPERTIES = ImmutableSet.of(ExcludeRule.GROUP_KEY, ExcludeRule.MODULE_KEY);
 
     private static final NotationParser<Object, ExcludeRule> PARSER =
-            NotationParserBuilder.toType(ExcludeRule.class).converter(new ExcludeRuleNotationConverter()).toComposite();
+        NotationParserBuilder.toType(ExcludeRule.class).converter(new ExcludeRuleNotationConverter()).toComposite();
 
     public static NotationParser<Object, ExcludeRule> parser() {
         return PARSER;
+    }
+
+    public ExcludeRuleNotationConverter() {
+        super(new TypeInfo<Map<String, String>>(Map.class));
     }
 
     @Override
@@ -39,10 +50,16 @@ public class ExcludeRuleNotationConverter extends MapNotationConverter<ExcludeRu
         visitor.candidate("Maps with 'group' and/or 'module'").example("[group: 'com.google.collections', module: 'google-collections']");
     }
 
-    protected ExcludeRule parseMap(@MapKey(ExcludeRule.GROUP_KEY) @Optional String group,
-                         @MapKey(ExcludeRule.MODULE_KEY) @Optional String module) {
+    @Override
+    protected ExcludeRule parseType(Map<String, String> notation) {
+        String group = notation.get(ExcludeRule.GROUP_KEY);
+        String module = notation.get(ExcludeRule.MODULE_KEY);
         if (group == null && module == null) {
             throw new InvalidUserDataException("Dependency exclude rule requires 'group' and/or 'module' specified. For example: [group: 'com.google.collections']");
+        }
+        Set<String> invalidKeys = Sets.difference(notation.keySet(), ALLOWED_PROPERTIES);
+        if (!invalidKeys.isEmpty()) {
+            throw new MissingPropertyException(invalidKeys.iterator().next(), ExcludeRule.class);
         }
         return new DefaultExcludeRule(group, module);
     }

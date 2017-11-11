@@ -16,11 +16,11 @@
 
 package org.gradle.internal.typeconversion;
 
+import com.google.common.collect.ImmutableSet;
 import org.gradle.internal.exceptions.DiagnosticsVisitor;
 import org.gradle.util.GUtil;
 
 import java.util.Collection;
-import java.util.LinkedHashSet;
 import java.util.Set;
 
 /**
@@ -42,11 +42,17 @@ public class FlatteningNotationParser<T> implements NotationParser<Object, Set<T
     }
 
     public Set<T> parseNotation(Object notation) {
-        Set<T> out = new LinkedHashSet<T>();
         Collection notations = GUtil.collectionize(notation);
-        for (Object n : notations) {
-            out.add(delegate.parseNotation(n));
+        if (notations.isEmpty()) {
+            return ImmutableSet.of();
         }
-        return out;
+        if (notations.size() == 1) {
+            return ImmutableSet.of((T) notations.iterator().next());
+        }
+        ImmutableSet.Builder<T> builder = ImmutableSet.builder();
+        for (Object n : notations) {
+            builder.add(delegate.parseNotation(n));
+        }
+        return builder.build();
     }
 }

@@ -580,10 +580,6 @@ public class DefaultServiceRegistry implements ServiceRegistry, Closeable {
         protected abstract T create();
 
         public void requiredBy(Provider provider) {
-            if (dependents == null) {
-                dependents = new HashSet<Provider>();
-            }
-            dependents.add(provider);
         }
 
         public void stop() {
