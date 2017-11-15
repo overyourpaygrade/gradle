@@ -47,7 +47,7 @@ public class FlatteningNotationParser<T> implements NotationParser<Object, Set<T
             return ImmutableSet.of();
         }
         if (notations.size() == 1) {
-            return ImmutableSet.of((T) notations.iterator().next());
+            return ImmutableSet.of(delegate.parseNotation(notations.iterator().next()));
         }
         ImmutableSet.Builder<T> builder = ImmutableSet.builder();
         for (Object n : notations) {
