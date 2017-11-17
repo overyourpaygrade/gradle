@@ -16,6 +16,7 @@
 package org.gradle.api.internal.tasks;
 
 import com.google.common.base.Strings;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import groovy.lang.Closure;
 import org.apache.commons.lang.StringUtils;
@@ -36,22 +37,20 @@ import org.gradle.initialization.ProjectAccessListener;
 import org.gradle.internal.Transformers;
 import org.gradle.internal.metaobject.DynamicObject;
 import org.gradle.internal.reflect.Instantiator;
-import org.gradle.model.internal.core.ModelNode;
-import org.gradle.model.internal.core.ModelPath;
-import org.gradle.model.internal.core.MutableModelNode;
 import org.gradle.model.internal.core.NamedEntityInstantiator;
-import org.gradle.model.internal.type.ModelType;
 import org.gradle.util.ConfigureUtil;
 
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedSet;
 
 public class DefaultTaskContainer extends DefaultTaskCollection<Task> implements TaskContainerInternal {
     private final ITaskFactory taskFactory;
     private final ProjectAccessListener projectAccessListener;
     private final NamedEntityInstantiator<Task> instantiator;
+    private final Map<String, PlaceHolder> placeHolders = Maps.newHashMap();
 
     public DefaultTaskContainer(ProjectInternal project, Instantiator instantiator, ITaskFactory taskFactory, ProjectAccessListener projectAccessListener) {
         super(Task.class, instantiator, project);
@@ -75,6 +74,8 @@ public class DefaultTaskContainer extends DefaultTaskCollection<Task> implements
 
     private <T extends Task> T addTask(T task, boolean replaceExisting) {
         String name = task.getName();
+
+        placeHolders.remove(name);
 
         Task existing = findByNameWithoutRules(name);
         if (existing != null) {
@@ -220,7 +221,13 @@ public class DefaultTaskContainer extends DefaultTaskCollection<Task> implements
      * @return true if this method _may_ have done some work.
      */
     private boolean maybeCreateTasks(String name) {
-        return false;
+        PlaceHolder placeHolder = placeHolders.remove(name);
+        if (placeHolder == null) {
+            return false;
+        } else {
+            placeHolder.create(this);
+            return true;
+        }
     }
 
     public Task findByName(String name) {
@@ -234,12 +241,16 @@ public class DefaultTaskContainer extends DefaultTaskCollection<Task> implements
         return super.findByNameWithoutRules(name);
     }
 
-    private Task realizeTask(ModelPath taskPath, ModelNode.State minState) {
-        return project.getModelRegistry().atStateOrLater(taskPath, ModelType.of(Task.class), minState);
+    public SortedSet<String> getNames() {
+        SortedSet<String> names = Sets.newTreeSet(super.getNames());
+        names.addAll(placeHolders.keySet());
+        return names;
     }
 
     public <T extends TaskInternal> void addPlaceholderAction(final String placeholderName, final Class<T> taskType, final Action<? super T> configure) {
-        create(placeholderName, taskType, configure);
+        if (!placeHolders.containsKey(placeholderName)) {
+            placeHolders.put(placeholderName, new PlaceHolder<T>(placeholderName, taskType, configure));
+        }
     }
 
     public <U extends Task> NamedDomainObjectContainer<U> containerWithType(Class<U> type) {
@@ -269,5 +280,24 @@ public class DefaultTaskContainer extends DefaultTaskCollection<Task> implements
     @Override
     public <S extends Task> TaskCollection<S> withType(Class<S> type) {
         return new RealizableTaskCollection<S>(type, super.withType(type));
+    }
+
+    private static class PlaceHolder<T extends TaskInternal> {
+        private String name;
+        private Class<T> type;
+        private Action<? super T> configureAction;
+
+        private PlaceHolder(String name, Class<T> type, Action<? super T> configureAction) {
+            this.name = name;
+            this.type = type;
+            this.configureAction = configureAction;
+        }
+
+        public T create(DefaultTaskContainer container) {
+            T task = container.taskFactory.create(name, type);
+            configureAction.execute(task);
+            container.add(task);
+            return task;
+        }
     }
 }
