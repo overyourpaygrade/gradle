@@ -129,12 +129,5 @@ public class DefaultFileSystemMirror implements FileSystemMirror, TaskOutputsGen
 
     @Override
     public void beforeComplete() {
-        // We throw away all state between builds
-        files.clear();
-        cacheFiles.clear();
-        trees.clear();
-        cacheTrees.clear();
-        snapshots.clear();
-        cacheSnapshots.clear();
     }
 }
